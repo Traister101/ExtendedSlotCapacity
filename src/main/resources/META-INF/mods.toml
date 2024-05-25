@@ -1,0 +1,25 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "MIT"
+#issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
+[[mods]]
+modId = "esc"
+version = "${file.jarVersion}"
+displayName = "Extended Slot Capacity lib"
+logoFile = "icon.png"
+authors = "Traister101"
+description = '''A library mod for containers with slot capacity over 64'''
+
+[[dependencies.esc]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.esc]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.20.2)"
+ordering = "AFTER"
+side = "BOTH"
