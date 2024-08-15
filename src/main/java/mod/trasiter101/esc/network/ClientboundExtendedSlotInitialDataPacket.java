@@ -1,9 +1,9 @@
 package mod.trasiter101.esc.network;
 
+import mod.trasiter101.esc.ClientHelper;
 import mod.trasiter101.esc.common.menu.ExtendedSlotCapacityMenu;
 import mod.trasiter101.esc.network.utils.ByteBufUtils;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Player;
@@ -40,7 +40,7 @@ public final class ClientboundExtendedSlotInitialDataPacket {
 
 
 	void handle() {
-		final Player player = Minecraft.getInstance().player;
+		final Player player = ClientHelper.getPlayer();
 		if (player != null && player.containerMenu instanceof ExtendedSlotCapacityMenu && windowId == player.containerMenu.containerId) {
 			player.containerMenu.initializeContents(stateID, stacks, carried);
 		}
