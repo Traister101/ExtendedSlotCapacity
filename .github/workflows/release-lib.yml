@@ -66,4 +66,5 @@ jobs:
       - name: Publish to GitHub Packages
         run: ./gradlew publish
         env:
+          VERSION: ${{ steps.version.outputs.result }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
