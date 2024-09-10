@@ -26,6 +26,13 @@ plugins {
 apply plugin: "net.minecraftforge.gradle"
 apply plugin: "org.parchmentmc.librarian.forgegradle"
 
+file("./dev.gradle").createNewFile()
+apply {
+    from("dev.gradle")
+}
+
+final String mappingsChannel = project.findProperty("mappings_channel") as String ?: "official"
+final String mappingsVersion = project.findProperty("mappings_version") as String ?: minecraftVersion
 final String modVersion = System.getenv("VERSION") ?: "0.0.0-indev"
 
 base {
@@ -41,7 +48,8 @@ java {
     withSourcesJar()
 }
 
-println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+println "Java: ${System.getProperty "java.version"}, JVM: ${System.getProperty "java.vm.version"} (${System.getProperty "java.vendor"}), Arch: ${System.getProperty "os.arch"}"
+println "Using mappings $mappingsChannel / $mappingsVersion with version $modVersion"
 
 minecraft {
     mappings channel: mappingsChannel, version: mappingsVersion
