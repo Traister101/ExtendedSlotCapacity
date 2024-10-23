@@ -1,13 +1,10 @@
 package mod.trasiter101.esc.common.capability;
 
 import net.minecraft.core.NonNullList;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.*;
 import net.minecraft.world.item.ItemStack;
 
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemStackHandler;
+import net.minecraftforge.items.*;
 
 /**
  * {@link IItemHandler} for extended stack sizes.
@@ -45,7 +42,7 @@ public class ExtendedSlotCapacityHandler extends ItemStackHandler {
 
 	@Override
 	public int getStackLimit(final int slotIndex, final ItemStack itemStack) {
-		return slotStackLimit;
+		return itemStack.isDamageableItem() ? itemStack.getMaxStackSize() : getSlotLimit(slotIndex);
 	}
 
 	@Override
@@ -74,13 +71,13 @@ public class ExtendedSlotCapacityHandler extends ItemStackHandler {
 		for (int i = 0; i < tagList.size(); i++) {
 			final CompoundTag itemTag = tagList.getCompound(i);
 
-			final int slotIdex = itemTag.getInt("Slot");
+			final int slotIndex = itemTag.getInt("Slot");
 
-			if (0 > slotIdex || stacks.size() <= slotIdex) continue;
+			if (0 > slotIndex || stacks.size() <= slotIndex) continue;
 
 			final ItemStack itemStack = ItemStack.of(itemTag);
 			itemStack.setCount(itemTag.getInt("ExtendedCount"));
-			stacks.set(slotIdex, itemStack);
+			stacks.set(slotIndex, itemStack);
 		}
 		onLoad();
 	}
