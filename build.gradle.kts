@@ -1,3 +1,5 @@
+import org.spongepowered.asm.gradle.plugins.struct.DynamicProperties
+
 plugins {
     idea
     java
@@ -48,6 +50,16 @@ configurations {
     get("testmodRuntimeClasspath").extendsFrom(runtimeClasspath.get())
 }
 
+mixin {
+    add(sourceSets.main.get(), "extended-slot-capacity.refmap.json")
+    config("extended-slot-capacity.mixins.json")
+
+    (debug as DynamicProperties).propertyMissing("verbose", true)
+    (debug as DynamicProperties).propertyMissing("export", true)
+    overwriteErrorLevel = "error"
+    hotSwap = true
+}
+
 minecraft {
     mappings(mappingsChannel, mappingsVersion)
 
@@ -55,6 +67,10 @@ minecraft {
         all {
             property("forge.logging.markers", "REGISTRIES")
             property("forge.logging.console.level", "debug")
+
+            // Mixin is stupid
+            property("mixin.env.remapRefMap", "true")
+            property("mixin.env.refMapRemappingFile", "$projectDir/build/createSrgToMcp/output.srg")
 
             mods.create(modID) {
                 source(sourceSets.main.get())
@@ -95,6 +111,9 @@ dependencies {
     minecraft("net.minecraftforge", "forge", "$minecraftVersion-$forgeVersion")
 
     "testmodImplementation"(sourceSets["main"].output)
+
+    // Mixin annotation processor
+    annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
 }
 
 idea {
