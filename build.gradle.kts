@@ -41,6 +41,13 @@ println(
 )
 println("Using mappings $mappingsChannel / $mappingsVersion with version $modVersion")
 
+sourceSets.create("testmod")
+
+configurations {
+    get("testmodCompileClasspath").extendsFrom(compileClasspath.get())
+    get("testmodRuntimeClasspath").extendsFrom(runtimeClasspath.get())
+}
+
 minecraft {
     mappings(mappingsChannel, mappingsVersion)
 
@@ -62,6 +69,16 @@ minecraft {
             property("forge.enabledGameTestNamespaces", modID)
         }
 
+        register("testmodClient") {
+            parent(runs.getByName("client"))
+
+            ideaModule("${project.name.replace(' ', '_')}.testmod")
+
+            mods.create("testmod") {
+                source(sourceSets["testmod"])
+            }
+        }
+
         register("server") {
             workingDirectory(file("run/server"))
 
@@ -76,6 +93,8 @@ repositories {
 
 dependencies {
     minecraft("net.minecraftforge", "forge", "$minecraftVersion-$forgeVersion")
+
+    "testmodImplementation"(sourceSets["main"].output)
 }
 
 idea {

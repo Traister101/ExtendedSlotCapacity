@@ -1,0 +1,28 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "MIT"
+#issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
+[[mods]]
+modId = "testmod"
+version = "${file.jarVersion}"
+displayName = "Test client of Extended Slot Capacity lib"
+
+[[dependencies.testmod]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.testmod]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.20.2)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.testmod]]
+modId = "esc"
+mandatory = true
+ordering = "AFTER"
+side = "BOTH"
