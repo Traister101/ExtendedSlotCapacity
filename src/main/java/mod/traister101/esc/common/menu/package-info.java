@@ -1,5 +1,5 @@
 @MethodsReturnNonnullByDefault @ParametersAreNonnullByDefault
-package mod.trasiter101.esc.common.capability;
+package mod.traister101.esc.common.menu;
 
 import net.minecraft.MethodsReturnNonnullByDefault;
 

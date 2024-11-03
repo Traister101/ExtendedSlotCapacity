@@ -1,22 +1,21 @@
-package mod.trasiter101.esc.common.menu;
+package mod.traister101.esc.common.menu;
 
-import mod.trasiter101.esc.common.capability.ExtendedSlotCapacityHandler;
-import mod.trasiter101.esc.common.slot.ExtendedSlot;
-import mod.trasiter101.esc.common.slot.ExtendedSlotItemHandler;
-import org.jetbrains.annotations.Contract;
+import mod.traister101.esc.common.capability.ExtendedSlotCapacityHandler;
+import mod.traister101.esc.common.slot.*;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.SlotAccess;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.*;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.items.SlotItemHandler;
+
+import org.jetbrains.annotations.Contract;
 
 /**
  * This is a bare-bones {@link Slot} agnostic Menu for slots which can exceed {@value Container#LARGE_MAX_STACK_SIZE} items.
@@ -37,7 +36,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 	/**
 	 * The amount of slots this container has
 	 */
-	protected final int containerSlots;
+	public final int containerSlots;
 
 	/**
 	 * @param containerSlots The amount of slots this container has

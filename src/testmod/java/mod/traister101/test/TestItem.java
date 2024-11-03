@@ -1,6 +1,6 @@
 package mod.traister101.test;
 
-import mod.trasiter101.esc.common.capability.ExtendedSlotCapacityHandler;
+import mod.traister101.esc.common.capability.ExtendedSlotCapacityHandler;
 
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;

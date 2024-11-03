@@ -1,4 +1,4 @@
-package mod.trasiter101.esc.common.slot;
+package mod.traister101.esc.common.slot;
 
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;

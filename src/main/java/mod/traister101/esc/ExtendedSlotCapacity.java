@@ -1,7 +1,7 @@
-package mod.trasiter101.esc;
+package mod.traister101.esc;
 
-import mod.trasiter101.esc.common.menu.ExtendedSlotCapacitySynchronizer;
-import mod.trasiter101.esc.network.ESCPacketHandler;
+import mod.traister101.esc.common.menu.ExtendedSlotCapacitySynchronizer;
+import mod.traister101.esc.network.ESCPacketHandler;
 
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;

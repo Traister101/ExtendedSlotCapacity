@@ -1,5 +1,5 @@
 @MethodsReturnNonnullByDefault @ParametersAreNonnullByDefault
-package mod.trasiter101.esc.network.utils;
+package mod.traister101.esc.network;
 
 import net.minecraft.MethodsReturnNonnullByDefault;
 

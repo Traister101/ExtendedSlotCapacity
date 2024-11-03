@@ -1,8 +1,8 @@
 package mod.traister101.test;
 
-import mod.trasiter101.esc.common.capability.ExtendedSlotCapacityHandler;
-import mod.trasiter101.esc.common.menu.ExtendedSlotCapacityMenu;
-import mod.trasiter101.esc.common.slot.ExtendedSlotItemHandler;
+import mod.traister101.esc.common.capability.ExtendedSlotCapacityHandler;
+import mod.traister101.esc.common.menu.ExtendedSlotCapacityMenu;
+import mod.traister101.esc.common.slot.ExtendedSlotItemHandler;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.*;

@@ -1,6 +1,6 @@
-package mod.trasiter101.esc.network;
+package mod.traister101.esc.network;
 
-import mod.trasiter101.esc.ExtendedSlotCapacity;
+import mod.traister101.esc.ExtendedSlotCapacity;
 import org.apache.commons.lang3.mutable.MutableInt;
 
 import net.minecraft.network.FriendlyByteBuf;

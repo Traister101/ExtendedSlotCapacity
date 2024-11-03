@@ -1,4 +1,4 @@
-package mod.trasiter101.esc.common.capability;
+package mod.traister101.esc.common.capability;
 
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.*;
@@ -15,7 +15,7 @@ public class ExtendedSlotCapacityHandler extends ItemStackHandler {
 	/**
 	 * The maximum item count a slot can hold
 	 */
-	protected final int slotStackLimit;
+	public final int slotStackLimit;
 
 	/**
 	 * @param slotStackLimit The maximum item count a slot can hold

@@ -1,5 +1,5 @@
 @MethodsReturnNonnullByDefault @ParametersAreNonnullByDefault
-package mod.trasiter101.esc.common.slot;
+package mod.traister101.esc.common.slot;
 
 import net.minecraft.MethodsReturnNonnullByDefault;
 

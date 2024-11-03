@@ -1,8 +1,8 @@
-package mod.trasiter101.esc.common.menu;
+package mod.traister101.esc.common.menu;
 
-import mod.trasiter101.esc.network.ClientboundExtendedSlotInitialDataPacket;
-import mod.trasiter101.esc.network.ClientboundExtendedSlotSyncPacket;
-import mod.trasiter101.esc.network.ESCPacketHandler;
+import mod.traister101.esc.network.ClientboundExtendedSlotInitialDataPacket;
+import mod.traister101.esc.network.ClientboundExtendedSlotSyncPacket;
+import mod.traister101.esc.network.ESCPacketHandler;
 
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.protocol.game.ClientboundContainerSetDataPacket;

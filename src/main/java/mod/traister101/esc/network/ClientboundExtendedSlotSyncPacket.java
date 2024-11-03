@@ -1,8 +1,8 @@
-package mod.trasiter101.esc.network;
+package mod.traister101.esc.network;
 
-import mod.trasiter101.esc.ClientHelper;
-import mod.trasiter101.esc.common.menu.ExtendedSlotCapacityMenu;
-import mod.trasiter101.esc.network.utils.ByteBufUtils;
+import mod.traister101.esc.ClientHelper;
+import mod.traister101.esc.common.menu.ExtendedSlotCapacityMenu;
+import mod.traister101.esc.network.utils.ByteBufUtils;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Player;

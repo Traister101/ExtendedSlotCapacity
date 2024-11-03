@@ -1,4 +1,4 @@
-package mod.trasiter101.esc.network.utils;
+package mod.traister101.esc.network.utils;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;

@@ -1,4 +1,4 @@
-package mod.trasiter101.esc;
+package mod.traister101.esc;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
