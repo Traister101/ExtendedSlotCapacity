@@ -16,6 +16,7 @@ val modID = "esc"
 val modName = "Extended-Slot-Capacity"
 val minecraftVersion = "1.20.1"
 val forgeVersion = "47.1.3"
+val lombokVersion = "1.18.32"
 
 val mappingsChannel: String = project.findProperty("mappings_channel") as String? ?: "official"
 val mappingsVersion: String = project.findProperty("mappings_version") as String? ?: minecraftVersion
@@ -111,6 +112,10 @@ dependencies {
     minecraft("net.minecraftforge", "forge", "$minecraftVersion-$forgeVersion")
 
     "testmodImplementation"(sourceSets["main"].output)
+
+    // Lombok cause why not
+    compileOnly("org.projectlombok:lombok:$lombokVersion")
+    annotationProcessor("org.projectlombok:lombok:$lombokVersion")
 
     // Mixin annotation processor
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")

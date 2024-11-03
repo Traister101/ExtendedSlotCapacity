@@ -2,9 +2,13 @@ package mod.traister101.esc.common.menu;
 
 import mod.traister101.esc.common.capability.ExtendedSlotCapacityHandler;
 import mod.traister101.esc.common.slot.*;
+import mod.traister101.esc.mixin.common.accessor.AbstractContainerMenuAccessor;
 
+import net.minecraft.*;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ByIdMap;
+import net.minecraft.util.ByIdMap.OutOfBoundsStrategy;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.entity.player.*;
@@ -14,8 +18,12 @@ import net.minecraft.world.item.ItemStack;
 
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.items.SlotItemHandler;
+import net.minecraftforge.registries.ForgeRegistries;
 
-import org.jetbrains.annotations.Contract;
+import lombok.Getter;
+import org.jetbrains.annotations.*;
+import java.util.*;
+import java.util.function.IntFunction;
 
 /**
  * This is a bare-bones {@link Slot} agnostic Menu for slots which can exceed {@value Container#LARGE_MAX_STACK_SIZE} items.
@@ -31,10 +39,11 @@ import org.jetbrains.annotations.Contract;
  * We provide {@link ExtendedSlotCapacitySynchronizer} for synchronizing. Children of this menu will automatically have
  * {@link ExtendedSlotCapacitySynchronizer} set as their synchronize.
  */
+@Getter
 public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 
 	/**
-	 * The amount of slots this container has
+	 * The amount of slots this container has, not including player inventory.
 	 */
 	public final int containerSlots;
 
@@ -42,7 +51,8 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 	 * @param containerSlots The amount of slots this container has
 	 */
 	@Contract(pure = true)
-	protected ExtendedSlotCapacityMenu(final MenuType<? extends ExtendedSlotCapacityMenu> menuType, final int windowId, final int containerSlots) {
+	protected ExtendedSlotCapacityMenu(final @Nullable MenuType<? extends ExtendedSlotCapacityMenu> menuType, final int windowId,
+			final int containerSlots) {
 		super(menuType, windowId);
 		this.containerSlots = containerSlots;
 	}
@@ -84,62 +94,28 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 	@Override
 	public abstract ItemStack quickMoveStack(final Player player, final int slotIndex);
 
+	/**
+	 * You should probably not override this.
+	 * See {{@link #dragStart(int, Player, DragType)}} {@link #dragContinue(int, Player, DragType)} {@link #dragEnd(int, Player, DragType)}
+	 * {@link #clickPickup(int, int, Player)} {@link #clickQuickMove(int, Player)} {@link #clickSwap(int, int, Player, Inventory)} and
+	 * {@link #clickPickupAll(int, int, Player)} instead
+	 */
 	@Override
 	public void clicked(final int slotIndex, final int mouseButton, final ClickType clickType, final Player player) {
-		// Not a slot
-		if (0 > slotIndex) {
-			if (slotIndex != SLOT_CLICKED_OUTSIDE) return;
-			if (clickType != ClickType.PICKUP && clickType != ClickType.QUICK_MOVE) return;
-			if (mouseButton != 0 && mouseButton != 1) return;
-			if (getCarried().isEmpty()) return;
-
-			final ClickAction clickAction = mouseButton == 0 ? ClickAction.PRIMARY : ClickAction.SECONDARY;
-			if (clickAction != ClickAction.PRIMARY) {
-				player.drop(getCarried().split(1), true);
-				return;
-			}
-
-			player.drop(getCarried(), true);
-			setCarried(ItemStack.EMPTY);
-			return;
-		}
-
-		final Inventory inventory = player.getInventory();
-		if (mouseButton == 0 || mouseButton == 1) {
-			if (clickType == ClickType.PICKUP) {
-				clickPickup(slotIndex, mouseButton, player);
-				return;
-			}
-			if (clickType == ClickType.QUICK_MOVE) {
-				clickQuickMove(slotIndex, player);
-				return;
-			}
-		}
-
-		if (clickType == ClickType.SWAP) {
-			clickSwap(slotIndex, mouseButton, player, inventory);
-			return;
-		}
-
-		if (clickType == ClickType.CLONE && player.getAbilities().instabuild && getCarried().isEmpty()) {
-			final Slot slot = slots.get(slotIndex);
-			if (slot.hasItem()) {
-				final ItemStack slotStack = slot.getItem();
-				setCarried(slotStack.copyWithCount(slotStack.getMaxStackSize()));
-			}
-			return;
-		}
-
-		if (clickType == ClickType.THROW && getCarried().isEmpty()) {
-			final Slot slot = slots.get(slotIndex);
-			final int stackCount = mouseButton == 0 ? 1 : slot.getItem().getMaxStackSize();
-			final ItemStack dropStack = slot.safeTake(stackCount, Integer.MAX_VALUE, player);
-			player.drop(dropStack, true);
-			return;
-		}
-
-		if (clickType == ClickType.PICKUP_ALL) {
-			clickPickupAll(slotIndex, mouseButton, player);
+		try {
+			doClick(slotIndex, mouseButton, clickType, player);
+		} catch (final Exception exception) {
+			final var crashreport = CrashReport.forThrowable(exception, "Container click");
+			final var crashreportcategory = crashreport.addCategory("Click info");
+			crashreportcategory.setDetail("Menu Type",
+					() -> Objects.requireNonNullElse(ForgeRegistries.MENU_TYPES.getKey(((AbstractContainerMenuAccessor) this).getMenuType()),
+							"<no type>").toString());
+			crashreportcategory.setDetail("Menu Class", () -> getClass().getCanonicalName());
+			crashreportcategory.setDetail("Slot Count", slots.size());
+			crashreportcategory.setDetail("Slot", slotIndex);
+			crashreportcategory.setDetail("Mouse Button", mouseButton);
+			crashreportcategory.setDetail("Click Type", clickType);
+			throw new ReportedException(crashreport);
 		}
 	}
 
@@ -243,6 +219,83 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 			}
 		}
 		return haveMovedStack;
+	}
+
+	/**
+	 * Start a slot drag or "quick craft" going by vanilla terms
+	 *
+	 * @param slotIndex The slot index
+	 * @param player The player
+	 * @param dragType The dragging type
+	 */
+	protected void dragStart(@SuppressWarnings("unused") final int slotIndex, final Player player, final DragType dragType) {
+		if (!isValidQuickcraftType(dragType.quickCraftTypeId, player)) {
+			resetQuickCraft();
+			return;
+		}
+		setDragStatus(DragStatus.CONTINUE);
+		getDragSlots().clear();
+	}
+
+	/**
+	 * Continue dragging though slots or a "quick craft" going by vanilla terms
+	 *
+	 * @param slotIndex The slot index
+	 * @param player The player
+	 * @param dragType The dragging type
+	 */
+	protected void dragContinue(final int slotIndex, @SuppressWarnings("unused") final Player player, final DragType dragType) {
+		final Slot slot = slots.get(slotIndex);
+		final ItemStack carriedStack = getCarried();
+		final var dragSlots = getDragSlots();
+		if (canItemQuickReplace(slot, carriedStack, true) && slot.mayPlace(
+				carriedStack) && (dragType == DragType.CLONE || carriedStack.getCount() > dragSlots.size()) && canDragTo(slot)) {
+			dragSlots.add(slot);
+		}
+	}
+
+	/**
+	 * End the slot drag or a "quick craft" going by vanilla terms
+	 *
+	 * @param slotIndex The slot index
+	 * @param player The player
+	 * @param dragType The dragging type
+	 */
+	protected void dragEnd(@SuppressWarnings("unused") final int slotIndex, final Player player, final DragType dragType) {
+		final var dragSlots = getDragSlots();
+		if (!dragSlots.isEmpty()) {
+			if (dragSlots.size() == 1) {
+				final int index = (dragSlots.iterator().next()).index;
+				resetQuickCraft();
+				doClick(index, dragType.quickCraftTypeId, ClickType.PICKUP, player);
+				return;
+			}
+
+			final ItemStack originalCarriedStack = getCarried().copy();
+			if (originalCarriedStack.isEmpty()) {
+				resetQuickCraft();
+				return;
+			}
+
+			int carriedCount = originalCarriedStack.getCount();
+
+			for (final var slot : dragSlots) {
+				final ItemStack carriedStack = getCarried();
+				if (slot != null && canItemQuickReplace(slot, carriedStack, true) && slot.mayPlace(
+						carriedStack) && (dragType == DragType.CLONE || carriedStack.getCount() >= dragSlots.size()) && canDragTo(slot)) {
+					final int j = slot.hasItem() ? slot.getItem().getCount() : 0;
+					final int k = Math.min(originalCarriedStack.getMaxStackSize(), slot.getMaxStackSize(originalCarriedStack));
+					final int l = Math.min(getQuickCraftPlaceCount(dragSlots, dragType.quickCraftTypeId, originalCarriedStack) + j, k);
+					carriedCount -= l - j;
+					slot.setByPlayer(originalCarriedStack.copyWithCount(l));
+				}
+			}
+
+			originalCarriedStack.setCount(carriedCount);
+			setCarried(originalCarriedStack);
+		}
+
+		resetQuickCraft();
 	}
 
 	/**
@@ -428,5 +481,184 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 				return true;
 			}
 		};
+	}
+
+	private void doClick(final int slotIndex, final int mouseButton, final ClickType clickType, final Player player) {
+		if (clickType == ClickType.QUICK_CRAFT) {
+			final DragStatus oldDragStatus = getDragStatus();
+			final DragStatus newDragStatus = DragStatus.getDragStatus(mouseButton);
+			setDragStatus(newDragStatus);
+			if ((oldDragStatus != DragStatus.CONTINUE || newDragStatus != DragStatus.END) && oldDragStatus != newDragStatus) {
+				resetQuickCraft();
+				return;
+			}
+
+			if (getCarried().isEmpty()) {
+				resetQuickCraft();
+				return;
+			}
+
+			switch (newDragStatus) {
+				case START -> {
+					final DragType dragType = DragType.getDragType(mouseButton);
+					setDragType(dragType);
+					dragStart(slotIndex, player, dragType);
+				}
+				case CONTINUE -> dragContinue(slotIndex, player, getDragType());
+				case END -> dragEnd(slotIndex, player, getDragType());
+			}
+
+			return;
+		}
+
+		if (getDragStatus() != DragStatus.START) {
+			resetQuickCraft();
+			return;
+		}
+
+		// Not a slot
+		if (0 > slotIndex) {
+			if (slotIndex != SLOT_CLICKED_OUTSIDE) return;
+			if (clickType != ClickType.PICKUP && clickType != ClickType.QUICK_MOVE) return;
+			if (mouseButton != 0 && mouseButton != 1) return;
+			if (getCarried().isEmpty()) return;
+
+			final ClickAction clickAction = mouseButton == 0 ? ClickAction.PRIMARY : ClickAction.SECONDARY;
+			if (clickAction != ClickAction.PRIMARY) {
+				player.drop(getCarried().split(1), true);
+				return;
+			}
+
+			player.drop(getCarried(), true);
+			setCarried(ItemStack.EMPTY);
+			return;
+		}
+
+		final Inventory inventory = player.getInventory();
+		if (mouseButton == 0 || mouseButton == 1) {
+			if (clickType == ClickType.PICKUP) {
+				clickPickup(slotIndex, mouseButton, player);
+				return;
+			}
+			if (clickType == ClickType.QUICK_MOVE) {
+				clickQuickMove(slotIndex, player);
+				return;
+			}
+		}
+
+		if (clickType == ClickType.SWAP) {
+			clickSwap(slotIndex, mouseButton, player, inventory);
+			return;
+		}
+
+		if (clickType == ClickType.CLONE && player.getAbilities().instabuild && getCarried().isEmpty()) {
+			final Slot slot = slots.get(slotIndex);
+			if (slot.hasItem()) {
+				final ItemStack slotStack = slot.getItem();
+				setCarried(slotStack.copyWithCount(slotStack.getMaxStackSize()));
+			}
+			return;
+		}
+
+		if (clickType == ClickType.THROW && getCarried().isEmpty()) {
+			final Slot slot = slots.get(slotIndex);
+			final int stackCount = mouseButton == 0 ? 1 : slot.getItem().getMaxStackSize();
+			final ItemStack dropStack = slot.safeTake(stackCount, Integer.MAX_VALUE, player);
+			player.drop(dropStack, true);
+			return;
+		}
+
+		if (clickType == ClickType.PICKUP_ALL) {
+			clickPickupAll(slotIndex, mouseButton, player);
+		}
+	}
+
+	/**
+	 * @return The current {@link DragType}
+	 */
+	protected final DragType getDragType() {
+		return DragType.byQuickCraftTypeId(((AbstractContainerMenuAccessor) this).getQuickcraftType());
+	}
+
+	/**
+	 * @param dragType The new {@link DragType} to set
+	 */
+	protected final void setDragType(final DragType dragType) {
+		((AbstractContainerMenuAccessor) this).setQuickcraftType(dragType.quickCraftTypeId);
+	}
+
+	/**
+	 * @return The current {@link DragStatus}
+	 */
+	protected final DragStatus getDragStatus() {
+		return DragStatus.byHeaderId(((AbstractContainerMenuAccessor) this).getQuickcraftStatus());
+	}
+
+	/**
+	 * @param dragStatus The new {@link DragStatus} to set
+	 */
+	protected final void setDragStatus(final DragStatus dragStatus) {
+		((AbstractContainerMenuAccessor) this).setQuickcraftStatus(dragStatus.headerId);
+	}
+
+	/**
+	 * @return The drag slots
+	 */
+	protected final Set<Slot> getDragSlots() {
+		return ((AbstractContainerMenuAccessor) this).getQuickcraftSlots();
+	}
+
+	/**
+	 * An enum for {@link AbstractContainerMenu#QUICKCRAFT_TYPE_CHARITABLE} {@link AbstractContainerMenu#QUICKCRAFT_TYPE_GREEDY}
+	 * {@link AbstractContainerMenu#QUICKCRAFT_TYPE_CLONE}
+	 */
+	@Getter
+	protected enum DragType {
+		CHARITABLE(QUICKCRAFT_TYPE_CHARITABLE),
+		GREEDY(QUICKCRAFT_TYPE_GREEDY),
+		CLONE(QUICKCRAFT_TYPE_CLONE);
+
+		private static final IntFunction<DragType> BY_ID = ByIdMap.continuous(DragType::getQuickCraftTypeId, values(), OutOfBoundsStrategy.ZERO);
+
+		public final int quickCraftTypeId;
+
+		DragType(final int quickCraftTypeId) {
+			this.quickCraftTypeId = quickCraftTypeId;
+		}
+
+		public static DragType byQuickCraftTypeId(final int dragTypeId) {
+			return BY_ID.apply(dragTypeId);
+		}
+
+		private static DragType getDragType(final int mouseButton) {
+			return byQuickCraftTypeId(mouseButton >> 2 & 3);
+		}
+	}
+
+	/**
+	 * An enum for {@link AbstractContainerMenu#QUICKCRAFT_HEADER_START} {@link AbstractContainerMenu#QUICKCRAFT_HEADER_CONTINUE}
+	 * {@link AbstractContainerMenu#QUICKCRAFT_HEADER_END}
+	 */
+	@Getter
+	protected enum DragStatus {
+		START(QUICKCRAFT_HEADER_START),
+		CONTINUE(QUICKCRAFT_HEADER_CONTINUE),
+		END(QUICKCRAFT_HEADER_END);
+
+		private static final IntFunction<DragStatus> BY_ID = ByIdMap.continuous(DragStatus::getHeaderId, values(), OutOfBoundsStrategy.ZERO);
+
+		public final int headerId;
+
+		DragStatus(final int headerId) {
+			this.headerId = headerId;
+		}
+
+		public static DragStatus byHeaderId(final int dragStatusId) {
+			return BY_ID.apply(dragStatusId);
+		}
+
+		private static DragStatus getDragStatus(final int mouseButton) {
+			return byHeaderId(mouseButton & 3);
+		}
 	}
 }
