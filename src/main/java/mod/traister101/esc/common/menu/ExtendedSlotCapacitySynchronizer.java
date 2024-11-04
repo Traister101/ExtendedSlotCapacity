@@ -1,15 +1,11 @@
 package mod.traister101.esc.common.menu;
 
-import mod.traister101.esc.network.ClientboundExtendedSlotInitialDataPacket;
-import mod.traister101.esc.network.ClientboundExtendedSlotSyncPacket;
-import mod.traister101.esc.network.ESCPacketHandler;
+import mod.traister101.esc.network.*;
 
 import net.minecraft.core.NonNullList;
-import net.minecraft.network.protocol.game.ClientboundContainerSetDataPacket;
-import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
+import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ContainerSynchronizer;
+import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 
 import net.minecraftforge.event.entity.player.PlayerContainerEvent;
@@ -26,6 +22,9 @@ public class ExtendedSlotCapacitySynchronizer implements ContainerSynchronizer {
 		this.player = player;
 	}
 
+	/**
+	 * How {@link ExtendedSlotCapacityMenu}s have their {@link ContainerSynchronizer} set to {@link ExtendedSlotCapacitySynchronizer}.
+	 */
 	public static void setExtendedSlotCapacitySynchronizer(final PlayerContainerEvent.Open event) {
 		final var containerMenu = event.getContainer();
 		if (!(containerMenu instanceof ExtendedSlotCapacityMenu)) return;

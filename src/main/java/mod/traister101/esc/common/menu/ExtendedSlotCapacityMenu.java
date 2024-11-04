@@ -2,7 +2,8 @@ package mod.traister101.esc.common.menu;
 
 import mod.traister101.esc.common.capability.ExtendedSlotCapacityHandler;
 import mod.traister101.esc.common.slot.*;
-import mod.traister101.esc.mixin.common.accessor.AbstractContainerMenuAccessor;
+import mod.traister101.esc.mixin.common.accessor.*;
+import org.lwjgl.glfw.GLFW;
 
 import net.minecraft.*;
 import net.minecraft.network.FriendlyByteBuf;
@@ -17,6 +18,7 @@ import net.minecraft.world.inventory.*;
 import net.minecraft.world.item.ItemStack;
 
 import net.minecraftforge.common.ForgeHooks;
+import net.minecraftforge.event.entity.player.PlayerContainerEvent.Open;
 import net.minecraftforge.items.SlotItemHandler;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -37,7 +39,8 @@ import java.util.function.IntFunction;
  * @apiNote Vanillas syncing (anonymous {@link ContainerSynchronizer} class in {@link ServerPlayer}) syncs {@link ItemStack}s via
  * {@link FriendlyByteBuf#writeItemStack(ItemStack, boolean)} and {@link FriendlyByteBuf#readItem()} which serializes the stack count as a byte.
  * We provide {@link ExtendedSlotCapacitySynchronizer} for synchronizing. Children of this menu will automatically have
- * {@link ExtendedSlotCapacitySynchronizer} set as their synchronize.
+ * {@link ExtendedSlotCapacitySynchronizer} set as their synchronizer via
+ * {@link ExtendedSlotCapacitySynchronizer#setExtendedSlotCapacitySynchronizer(Open)}
  */
 @Getter
 public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
@@ -97,8 +100,8 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 	/**
 	 * You should probably not override this.
 	 * See {{@link #dragStart(int, Player, DragType)}} {@link #dragContinue(int, Player, DragType)} {@link #dragEnd(int, Player, DragType)}
-	 * {@link #clickPickup(int, int, Player)} {@link #clickQuickMove(int, Player)} {@link #clickSwap(int, int, Player, Inventory)} and
-	 * {@link #clickPickupAll(int, int, Player)} instead
+	 * {@link #clickPickup(int, Player, ClickAction)} {@link #clickQuickMove(int, Player)} {@link #clickSwap(int, int, Player, Inventory)} and
+	 * {@link #clickPickupAll(int, Player, boolean)} instead
 	 */
 	@Override
 	public void clicked(final int slotIndex, final int mouseButton, final ClickType clickType, final Player player) {
@@ -281,13 +284,14 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 
 			for (final var slot : dragSlots) {
 				final ItemStack carriedStack = getCarried();
-				if (slot != null && canItemQuickReplace(slot, carriedStack, true) && slot.mayPlace(
+				if (canItemQuickReplace(slot, carriedStack, true) && slot.mayPlace(
 						carriedStack) && (dragType == DragType.CLONE || carriedStack.getCount() >= dragSlots.size()) && canDragTo(slot)) {
-					final int j = slot.hasItem() ? slot.getItem().getCount() : 0;
-					final int k = Math.min(originalCarriedStack.getMaxStackSize(), slot.getMaxStackSize(originalCarriedStack));
-					final int l = Math.min(getQuickCraftPlaceCount(dragSlots, dragType.quickCraftTypeId, originalCarriedStack) + j, k);
-					carriedCount -= l - j;
-					slot.setByPlayer(originalCarriedStack.copyWithCount(l));
+					final int dragCount = slot.hasItem() ? slot.getItem().getCount() : 0;
+					final int dragCap = Math.min(originalCarriedStack.getMaxStackSize(), slot.getMaxStackSize(originalCarriedStack));
+					final int dragSize = Math.min(getQuickCraftPlaceCount(dragSlots, dragType.quickCraftTypeId, originalCarriedStack) + dragCount,
+							dragCap);
+					carriedCount -= dragSize - dragCount;
+					slot.setByPlayer(originalCarriedStack.copyWithCount(dragSize));
 				}
 			}
 
@@ -300,10 +304,12 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 
 	/**
 	 * Called to perform the pickup click action
+	 *
+	 * @param slotIndex The slot index
+	 * @param player The player
+	 * @param clickAction The type of click
 	 */
-	protected void clickPickup(final int slotIndex, final int mouseButton, final Player player) {
-		final ClickAction clickAction = mouseButton == 0 ? ClickAction.PRIMARY : ClickAction.SECONDARY;
-
+	protected void clickPickup(final int slotIndex, final Player player, final ClickAction clickAction) {
 		final Slot slot = slots.get(slotIndex);
 		final ItemStack slotStack = slot.getItem();
 		final ItemStack carriedStack = getCarried();
@@ -326,12 +332,10 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 		// Not holding anything
 		if (carriedStack.isEmpty()) {
 			// How much we should extract
-			final int extractAmount;
-			if (clickAction == ClickAction.PRIMARY) {
-				extractAmount = slotStack.getCount();
-			} else {
-				extractAmount = (Math.min(slotStack.getCount(), slotStack.getMaxStackSize()) + 1) / 2;
-			}
+			final int extractAmount = switch (clickAction) {
+				case PRIMARY -> slotStack.getCount();
+				case SECONDARY -> (Math.min(slotStack.getCount(), slotStack.getMaxStackSize()) + 1) / 2;
+			};
 			slot.tryRemove(extractAmount, Integer.MAX_VALUE, player).ifPresent((stack) -> {
 				setCarried(stack);
 				slot.onTake(player, stack);
@@ -366,7 +370,10 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 	}
 
 	/**
-	 * Called to quick move stacks
+	 * Called to quick move stacks (shift click)
+	 *
+	 * @param slotIndex The slot index
+	 * @param player The player
 	 */
 	protected void clickQuickMove(final int slotIndex, final Player player) {
 		final Slot slot = slots.get(slotIndex);
@@ -381,20 +388,24 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 	}
 
 	/**
-	 * Called to perform stack swap action
+	 * Called to perform stack swap action, swapping with
+	 *
+	 * @param slotIndex The slot index
+	 * @param hotbarIndex The hotbar index. [0,9) using {@link Inventory#getItem(int)} is the most convenient way to grab the stack
+	 * @param player The player
+	 * @param inventory The player inventory
 	 */
-	protected void clickSwap(final int slotIndex, final int mouseButton, final Player player, final Inventory inventory) {
+	protected void clickSwap(final int slotIndex, final int hotbarIndex, final Player player, final Inventory inventory) {
 		final Slot slot = slots.get(slotIndex);
-		final ItemStack itemStack = inventory.getItem(mouseButton);
+		final ItemStack itemStack = inventory.getItem(hotbarIndex);
 		final ItemStack slotStack = slot.getItem();
 		if (itemStack.isEmpty() && slotStack.isEmpty()) return;
 
 		if (itemStack.isEmpty()) {
 			if (!slot.mayPickup(player)) return;
 
-			inventory.setItem(mouseButton, slotStack);
-			// I think we don't have to worry about crafting...
-			//slot.onSwapCraft(slotStack.getCount());
+			inventory.setItem(hotbarIndex, slotStack);
+			((SlotAccessor) slot).invokeOnSwapCraft(slotStack.getCount());
 			slot.setByPlayer(ItemStack.EMPTY);
 			slot.onTake(player, slotStack);
 			return;
@@ -406,7 +417,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 			final int maxStackSize = slot.getMaxStackSize(itemStack);
 
 			if (maxStackSize >= itemStack.getCount()) {
-				inventory.setItem(mouseButton, ItemStack.EMPTY);
+				inventory.setItem(hotbarIndex, ItemStack.EMPTY);
 				slot.setByPlayer(itemStack);
 				return;
 			}
@@ -414,10 +425,11 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 			slot.setByPlayer(itemStack.split(maxStackSize));
 			return;
 		}
+
 		if (slot.mayPickup(player) && slot.mayPlace(itemStack)) {
 			final int maxStackSize = slot.getMaxStackSize(itemStack);
 			if (itemStack.getCount() <= maxStackSize) {
-				inventory.setItem(mouseButton, slotStack);
+				inventory.setItem(hotbarIndex, slotStack);
 				slot.setByPlayer(itemStack);
 				slot.onTake(player, slotStack);
 				return;
@@ -433,30 +445,49 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 
 	/**
 	 * Called to perform pickup all
+	 *
+	 * @param slotIndex The slot index
+	 * @param player The player
+	 * @param reverseDirection If slot iteration should happen in reverse
 	 */
-	protected void clickPickupAll(final int slotIndex, final int mouseButton, final Player player) {
+	protected void clickPickupAll(final int slotIndex, final Player player, final boolean reverseDirection) {
 		final Slot slot = slots.get(slotIndex);
 		final ItemStack carriedStack = getCarried();
-		if (!carriedStack.isEmpty() && (!slot.hasItem() || !slot.mayPickup(player))) {
-			final int l1 = mouseButton == 0 ? 0 : slots.size() - 1;
-			final int k2 = mouseButton == 0 ? 1 : -1;
+		if (carriedStack.isEmpty() || (slot.hasItem() && slot.mayPickup(player))) return;
 
-			for (int l2 = 0; l2 < 2; ++l2) {
-				for (int l3 = l1; l3 >= 0 && l3 < slots.size() && carriedStack.getCount() < carriedStack.getMaxStackSize(); l3 += k2) {
-					final Slot loopSlot = slots.get(l3);
+		final int startIndex = reverseDirection ? 0 : slots.size() - 1;
 
-					if (!loopSlot.hasItem()) continue;
-					if (!canItemQuickReplace(loopSlot, carriedStack, true)) continue;
-					if (!loopSlot.mayPickup(player)) continue;
-					if (!canTakeItemForPickAll(carriedStack, loopSlot)) continue;
+		pickupAll(player, startIndex, carriedStack, reverseDirection, true);
+		pickupAll(player, startIndex, carriedStack, reverseDirection, false);
+	}
 
-					final ItemStack loopStack = loopSlot.getItem();
-					if (l2 == 0 && loopStack.getCount() == loopStack.getMaxStackSize()) continue;
-					final ItemStack resultStack = loopSlot.safeTake(loopStack.getCount(), carriedStack.getMaxStackSize() - carriedStack.getCount(),
-							player);
-					carriedStack.grow(resultStack.getCount());
-				}
-			}
+	/**
+	 * Vanilla's code to collect a full stack on the mouse split into a method for ease of use. See {@link #clickPickupAll(int, Player, boolean)}.
+	 * <p>
+	 * Vanilla picks up full stacks last, to keep the same behavior you'd call this twice, once with {@code skipFullStacks=true}
+	 * and then again with {@code skipFullStacks=false}
+	 *
+	 * @param player The player
+	 * @param startIndex The slot index
+	 * @param carriedStack The carried stack
+	 * @param reverseDirection If the slots should be iterated through in reverse
+	 * @param skipFullStacks If full stacks should be skipped
+	 */
+	protected final void pickupAll(final Player player, final int startIndex, final ItemStack carriedStack, final boolean reverseDirection,
+			final boolean skipFullStacks) {
+		for (int pickupIndex = startIndex; pickupIndex >= 0 && pickupIndex < slots.size() && carriedStack.getCount() < carriedStack.getMaxStackSize(); pickupIndex +=
+				reverseDirection ? 1 : -1) {
+			final Slot loopSlot = slots.get(pickupIndex);
+
+			if (!loopSlot.hasItem()) continue;
+			if (!canItemQuickReplace(loopSlot, carriedStack, true)) continue;
+			if (!loopSlot.mayPickup(player)) continue;
+			if (!canTakeItemForPickAll(carriedStack, loopSlot)) continue;
+
+			final ItemStack loopStack = loopSlot.getItem();
+			if (skipFullStacks && loopStack.getCount() == loopStack.getMaxStackSize()) continue;
+			final ItemStack resultStack = loopSlot.safeTake(loopStack.getCount(), carriedStack.getMaxStackSize() - carriedStack.getCount(), player);
+			carriedStack.grow(resultStack.getCount());
 		}
 	}
 
@@ -520,11 +551,10 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 		if (0 > slotIndex) {
 			if (slotIndex != SLOT_CLICKED_OUTSIDE) return;
 			if (clickType != ClickType.PICKUP && clickType != ClickType.QUICK_MOVE) return;
-			if (mouseButton != 0 && mouseButton != 1) return;
+			if (mouseButton != GLFW.GLFW_MOUSE_BUTTON_1 && mouseButton != GLFW.GLFW_MOUSE_BUTTON_2) return;
 			if (getCarried().isEmpty()) return;
 
-			final ClickAction clickAction = mouseButton == 0 ? ClickAction.PRIMARY : ClickAction.SECONDARY;
-			if (clickAction != ClickAction.PRIMARY) {
+			if (mouseButton != GLFW.GLFW_MOUSE_BUTTON_1) {
 				player.drop(getCarried().split(1), true);
 				return;
 			}
@@ -535,9 +565,9 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 		}
 
 		final Inventory inventory = player.getInventory();
-		if (mouseButton == 0 || mouseButton == 1) {
+		if (mouseButton == GLFW.GLFW_MOUSE_BUTTON_1 || mouseButton == GLFW.GLFW_MOUSE_BUTTON_2) {
 			if (clickType == ClickType.PICKUP) {
-				clickPickup(slotIndex, mouseButton, player);
+				clickPickup(slotIndex, player, mouseButton == 0 ? ClickAction.PRIMARY : ClickAction.SECONDARY);
 				return;
 			}
 			if (clickType == ClickType.QUICK_MOVE) {
@@ -569,7 +599,9 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 		}
 
 		if (clickType == ClickType.PICKUP_ALL) {
-			clickPickupAll(slotIndex, mouseButton, player);
+			// It does not appear to be possible for the mouse button to ever be anything but mouse 1?
+			// Strange but we'll keep the vanilla behavior
+			clickPickupAll(slotIndex, player, mouseButton == GLFW.GLFW_MOUSE_BUTTON_1);
 		}
 	}
 

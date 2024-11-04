@@ -4,7 +4,8 @@
   "package": "mod.traister101.esc.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-	"common.accessor.AbstractContainerMenuAccessor"
+	"common.accessor.AbstractContainerMenuAccessor",
+	"common.accessor.SlotAccessor"
   ],
   "client": [
   ],
