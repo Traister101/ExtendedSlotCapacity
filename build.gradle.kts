@@ -17,6 +17,7 @@ val modName = "Extended-Slot-Capacity"
 val minecraftVersion = "1.20.1"
 val forgeVersion = "47.1.3"
 val lombokVersion = "1.18.32"
+val mouseTweaksFileId = "5338457"
 
 val mappingsChannel: String = project.findProperty("mappings_channel") as String? ?: "official"
 val mappingsVersion: String = project.findProperty("mappings_version") as String? ?: minecraftVersion
@@ -105,7 +106,13 @@ minecraft {
 }
 
 repositories {
-    mavenLocal()
+    maven {
+        name = "Curse maven"
+        url = uri("https://www.cursemaven.com")
+        content {
+            includeGroup("curse.maven")
+        }
+    }
 }
 
 dependencies {
@@ -119,6 +126,10 @@ dependencies {
 
     // Mixin annotation processor
     annotationProcessor("org.spongepowered:mixin:0.8.5:processor")
+
+    // Mouse Tweaks to make sure we are compatible
+    compileOnly(fg.deobf("curse.maven:mouse-tweaks-60089:$mouseTweaksFileId"))
+    runtimeOnly(fg.deobf("curse.maven:mouse-tweaks-60089:$mouseTweaksFileId"))
 }
 
 idea {
