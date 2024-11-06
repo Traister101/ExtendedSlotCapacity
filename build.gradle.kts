@@ -151,7 +151,8 @@ publishing {
             artifactId = project.base.archivesName.get()
             version = project.version.toString()
 
-            from(components["java"])
+            // This makes maven produce a pom with deobf dependencies :| it works without it so we shall bodge
+//            from(components["java"])
         }
     }
 
