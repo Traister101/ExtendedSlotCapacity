@@ -1,7 +1,9 @@
 package mod.traister101.esc.common.capability;
 
+import mod.traister101.esc.ExtendedContainerHelper;
+
 import net.minecraft.core.NonNullList;
-import net.minecraft.nbt.*;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 
 import net.minecraftforge.items.*;
@@ -47,38 +49,12 @@ public class ExtendedSlotCapacityHandler extends ItemStackHandler {
 
 	@Override
 	public CompoundTag serializeNBT() {
-		final ListTag nbtTagList = new ListTag();
-		for (int slotIndex = 0; slotIndex < stacks.size(); slotIndex++) {
-			final ItemStack slotStack = stacks.get(slotIndex);
-			if (slotStack.isEmpty()) continue;
-
-			final int realCount = Math.min(slotStackLimit, slotStack.getCount());
-			final CompoundTag itemTag = new CompoundTag();
-			itemTag.putInt("Slot", slotIndex);
-			slotStack.save(itemTag);
-			itemTag.putInt("ExtendedCount", realCount);
-			nbtTagList.add(itemTag);
-		}
-
-		final CompoundTag nbt = new CompoundTag();
-		nbt.put("Items", nbtTagList);
-		return nbt;
+		return ExtendedContainerHelper.saveAllItems(new CompoundTag(), stacks, slotStackLimit);
 	}
 
 	@Override
 	public void deserializeNBT(final CompoundTag nbt) {
-		final ListTag tagList = nbt.getList("Items", Tag.TAG_COMPOUND);
-		for (int i = 0; i < tagList.size(); i++) {
-			final CompoundTag itemTag = tagList.getCompound(i);
-
-			final int slotIndex = itemTag.getInt("Slot");
-
-			if (0 > slotIndex || stacks.size() <= slotIndex) continue;
-
-			final ItemStack itemStack = ItemStack.of(itemTag);
-			itemStack.setCount(itemTag.getInt("ExtendedCount"));
-			stacks.set(slotIndex, itemStack);
-		}
+		ExtendedContainerHelper.loadAllItems(nbt, stacks);
 		onLoad();
 	}
 }

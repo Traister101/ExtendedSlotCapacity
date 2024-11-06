@@ -33,7 +33,7 @@ import java.util.function.IntFunction;
  * and serialize the stack sizes as vanilla serialization caps out at {@value Byte#MAX_VALUE}
  * <p>
  * The container slots must support extended counts via {@link Slot#getMaxStackSize()} and {@link Slot#getMaxStackSize(ItemStack)}
- * We provide {@link ExtendedSlotItemHandler} and {@link ExtendedSlot} as the forge provided {@link SlotItemHandler} and vanilla {@link Slot}
+ * We provide {@link ExtendedSlotItemHandler} and {@link ExtendedCapacitySlot} as the forge provided {@link SlotItemHandler} and vanilla {@link Slot}
  * implementation of {@link Slot#getMaxStackSize(ItemStack)} clamps the max stack size to the passed in stacks {@link ItemStack#getMaxStackSize()}
  *
  * @apiNote Vanillas syncing (anonymous {@link ContainerSynchronizer} class in {@link ServerPlayer}) syncs {@link ItemStack}s via

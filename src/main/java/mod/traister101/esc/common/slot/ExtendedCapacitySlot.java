@@ -7,9 +7,9 @@ import net.minecraft.world.item.ItemStack;
 /**
  * Same as {@link Slot} but with an overridden {@link #getMaxStackSize(ItemStack)}
  */
-public class ExtendedSlot extends Slot {
+public class ExtendedCapacitySlot extends Slot {
 
-	public ExtendedSlot(final Container container, final int slotIndex, final int xPosition, final int yPosition) {
+	public ExtendedCapacitySlot(final Container container, final int slotIndex, final int xPosition, final int yPosition) {
 		super(container, slotIndex, xPosition, yPosition);
 	}
 
