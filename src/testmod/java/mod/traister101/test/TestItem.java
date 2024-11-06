@@ -19,7 +19,7 @@ import org.jetbrains.annotations.*;
 public class TestItem extends Item {
 
 	public static final int SLOT_COUNT = 27;
-	public static final int SLOT_STACK_LIMIT = 64;
+	public static final int SLOT_STACK_LIMIT = 128;
 
 	public TestItem(final Properties pProperties) {
 		super(pProperties);

@@ -1,10 +1,12 @@
 package mod.traister101.test;
 
+import mod.traister101.esc.common.ExtendedCapacitySimpleContainer;
 import mod.traister101.esc.common.capability.ExtendedSlotCapacityHandler;
 import mod.traister101.esc.common.menu.ExtendedSlotCapacityMenu;
-import mod.traister101.esc.common.slot.ExtendedSlotItemHandler;
+import mod.traister101.esc.common.slot.*;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.*;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -13,15 +15,26 @@ import net.minecraftforge.items.IItemHandler;
 
 public class TestMenu extends ExtendedSlotCapacityMenu {
 
+	protected TestMenu(final int windowId, final Inventory inventory, final Container container) {
+		super(TestMod.CONTAINER_MENU.get(), windowId, container.getContainerSize());
+
+		this.addContainerSlots(container);
+		this.addPlayerInventorySlots(inventory);
+	}
+
 	protected TestMenu(final int windowId, final Inventory inventory, final IItemHandler handler) {
-		super(TestMod.TEST_MENU.get(), windowId, handler.getSlots());
+		super(TestMod.ITEM_HANDLER_MENU.get(), windowId, handler.getSlots());
 
 		this.addContainerSlots(handler);
 		this.addPlayerInventorySlots(inventory);
 	}
 
-	public static TestMenu fromNetwork(int i, Inventory inventory, FriendlyByteBuf friendlyByteBuf) {
+	public static TestMenu itemHandlerMenu(int i, Inventory inventory, FriendlyByteBuf friendlyByteBuf) {
 		return new TestMenu(i, inventory, new ExtendedSlotCapacityHandler(friendlyByteBuf.readVarInt(), friendlyByteBuf.readVarInt()));
+	}
+
+	public static TestMenu containerMenu(int i, Inventory inventory, @SuppressWarnings("unused") FriendlyByteBuf friendlyByteBuf) {
+		return new TestMenu(i, inventory, new ExtendedCapacitySimpleContainer(friendlyByteBuf.readVarInt(), friendlyByteBuf.readVarInt()));
 	}
 
 	@Override
@@ -32,6 +45,48 @@ public class TestMenu extends ExtendedSlotCapacityMenu {
 	@Override
 	public boolean stillValid(final Player player) {
 		return true;
+	}
+
+	private void addContainerSlots(final Container container) {
+		switch (containerSlots) {
+			case 1 -> addSlots(container, 1, 1, 80, 32);
+			case 4 -> addSlots(container, 2, 2, 71, 23);
+			case 8 -> addSlots(container, 2, 4, 53, 23);
+			case 18 -> addSlots(container, 2, 9, 8, 23);
+			default -> {
+				// We want to round up, integer math rounds down
+				final int rows = Math.round((float) containerSlots / 9);
+				final int columns = containerSlots / rows;
+				addSlots(container, rows, columns);
+			}
+		}
+	}
+
+	private void addSlots(final Container container, final int rows, final int columns) {
+		if (rows > 1) {
+			addSlots(container, rows - 1, 9, 8, 18);
+		}
+
+		for (int column = 0; column < columns; column++) {
+			final int yPosition = 18 * (rows - 1) + 18;
+			final int xPosition = 8 + column * 18;
+			final int index = column + (rows - 1) * columns;
+			addSlot(new ExtendedCapacitySlot(container, index, xPosition, yPosition));
+		}
+	}
+
+	private void addSlots(final Container container, final int rows, final int columns, final int startX, final int startY) {
+		assert rows != 0 : "Cannot have zero rows of slots";
+		assert columns != 0 : "Cannot have zero columns of slots";
+
+		for (int row = 0; row < rows; row++) {
+			for (int column = 0; column < columns; column++) {
+				final int yPosition = startY + row * 18;
+				final int xPosition = startX + column * 18;
+				final int index = column + row * columns;
+				addSlot(new ExtendedCapacitySlot(container, index, xPosition, yPosition));
+			}
+		}
 	}
 
 	/**
