@@ -142,7 +142,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 
 				// Can't merge these stacks
 				if (!ItemStack.isSameItemSameTags(movedStack, slotStack)) {
-					slotIndex += (reverseDirection) ? -1 : 1;
+					slotIndex += reverseDirection ? -1 : 1;
 					continue;
 				}
 
@@ -151,8 +151,8 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 				final int maxSize;
 				// If it's our container slots use the slot limit to determine the max stack size
 				if (slotIndex < containerSlots) {
-					maxSize = slot.getMaxStackSize();
-				} else maxSize = Math.min(slot.getMaxStackSize(), movedStack.getMaxStackSize());
+					maxSize = slot.getMaxStackSize(slotStack);
+				} else maxSize = Math.min(slot.getMaxStackSize(slotStack), movedStack.getMaxStackSize());
 
 				// Can fully consume the merge stack
 				if (maxSize >= total) {
@@ -160,7 +160,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 					slotStack.setCount(total);
 					slot.setChanged();
 					haveMovedStack = true;
-					slotIndex += (reverseDirection) ? -1 : 1;
+					slotIndex += reverseDirection ? -1 : 1;
 					continue;
 				}
 
@@ -170,10 +170,10 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 					slotStack.grow(maxSize - slotStack.getCount());
 					slot.setChanged();
 					haveMovedStack = true;
-					slotIndex += (reverseDirection) ? -1 : 1;
+					slotIndex += reverseDirection ? -1 : 1;
 					continue;
 				}
-				slotIndex += (reverseDirection) ? -1 : 1;
+				slotIndex += reverseDirection ? -1 : 1;
 			}
 		}
 
@@ -192,7 +192,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 
 				// Continue early if we can't put anything in this slot
 				if (slot.hasItem() || !slot.mayPlace(movedStack)) {
-					slotIndex += (reverseDirection) ? -1 : 1;
+					slotIndex += reverseDirection ? -1 : 1;
 					continue;
 				}
 
@@ -200,7 +200,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 				if (slotIndex < containerSlots) {
 					slot.setByPlayer(movedStack.split(slot.getMaxStackSize()));
 					haveMovedStack = true;
-					slotIndex += (reverseDirection) ? -1 : 1;
+					slotIndex += reverseDirection ? -1 : 1;
 					continue;
 				}
 
@@ -210,7 +210,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 					if (movedStack.getCount() > splitSize) {
 						slot.setByPlayer(movedStack.split(splitSize));
 						haveMovedStack = true;
-						slotIndex += (reverseDirection) ? -1 : 1;
+						slotIndex += reverseDirection ? -1 : 1;
 						continue;
 					}
 				}
@@ -218,7 +218,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 				// Put the whole stack in the slot
 				slot.setByPlayer(movedStack.split(movedStack.getCount()));
 				haveMovedStack = true;
-				slotIndex += (reverseDirection) ? -1 : 1;
+				slotIndex += reverseDirection ? -1 : 1;
 			}
 		}
 		return haveMovedStack;
@@ -333,7 +333,7 @@ public abstract class ExtendedSlotCapacityMenu extends AbstractContainerMenu {
 		if (carriedStack.isEmpty()) {
 			// How much we should extract
 			final int extractAmount = switch (clickAction) {
-				case PRIMARY -> slotStack.getCount();
+				case PRIMARY -> Math.min(slotStack.getCount(), slotStack.getMaxStackSize());
 				case SECONDARY -> (Math.min(slotStack.getCount(), slotStack.getMaxStackSize()) + 1) / 2;
 			};
 			slot.tryRemove(extractAmount, Integer.MAX_VALUE, player).ifPresent((stack) -> {

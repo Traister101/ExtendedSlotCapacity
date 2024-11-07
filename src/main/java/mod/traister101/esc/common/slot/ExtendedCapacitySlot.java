@@ -15,6 +15,27 @@ public class ExtendedCapacitySlot extends Slot {
 
 	@Override
 	public int getMaxStackSize(final ItemStack itemStack) {
-		return getMaxStackSize();
+		return itemStack.isDamageableItem() ? itemStack.getMaxStackSize() : getMaxStackSize();
+	}
+
+	@Override
+	public ItemStack safeInsert(final ItemStack insertStack, final int increment) {
+		if (insertStack.isEmpty() || !mayPlace(insertStack)) return insertStack;
+
+		final ItemStack currentStack = getItem();
+		final int maxSize = getMaxStackSize(insertStack);
+		final int insertAmount = Math.min(Math.min(increment, insertStack.getCount()), maxSize);
+		if (currentStack.isEmpty()) {
+			setByPlayer(insertStack.split(insertAmount));
+			return insertStack;
+		}
+
+		if (ItemStack.isSameItemSameTags(currentStack, insertStack)) {
+			insertStack.shrink(insertAmount);
+			currentStack.grow(insertAmount);
+			setByPlayer(currentStack);
+			return insertStack;
+		}
+		return insertStack;
 	}
 }
