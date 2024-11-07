@@ -1,3 +1,5 @@
+import groovy.util.Node
+import groovy.util.NodeList
 import org.spongepowered.asm.gradle.plugins.struct.DynamicProperties
 
 plugins {
@@ -144,6 +146,7 @@ idea {
     }
 }
 
+
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
@@ -151,8 +154,16 @@ publishing {
             artifactId = project.base.archivesName.get()
             version = project.version.toString()
 
-            // This makes maven produce a pom with deobf dependencies :| it works without it so we shall bodge
-//            from(components["java"])
+            from(components["java"])
+
+            // Hacky way to remove the deobf dependencies because of course thats an issue now for some reason
+            pom {
+                withXml {
+                    val pomNode = asNode()
+                    val get = pomNode.get("dependencies") as NodeList
+                    pomNode.remove(get[0] as Node)
+                }
+            }
         }
     }
 
