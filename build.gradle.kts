@@ -151,9 +151,7 @@ publishing {
             artifactId = project.base.archivesName.get()
             version = project.version.toString()
 
-            artifact(tasks.getByName("jar"))
-            artifact(tasks.getByName("sourcesJar"))
-            artifact(tasks.getByName("javadocJar"))
+            from(components["java"])
         }
     }
 
@@ -183,9 +181,13 @@ tasks {
     }
 
     javadoc {
-        source = sourceSets.main.get().java
+        source = sourceSets.main.get().allJava
         options.optionFiles(file("javadoc-options.txt"))
         options.encoding = "UTF-8"
+    }
+
+    withType<GenerateModuleMetadata> {
+        enabled = false
     }
 
     withType<JavaCompile>().configureEach {
