@@ -1,5 +1,3 @@
-import groovy.util.Node
-import groovy.util.NodeList
 import org.spongepowered.asm.gradle.plugins.struct.DynamicProperties
 
 plugins {
@@ -153,15 +151,9 @@ publishing {
             artifactId = project.base.archivesName.get()
             version = project.version.toString()
 
-            from(components["java"])
-            // Hacky bs to remove the dependencies section from the pom. We need to do this in
-            // conjunction with disabling the GenerateModuleMetadata task. Unreal man...
-            pom {
-                withXml {
-                    val pomNode = asNode()
-                    pomNode.remove((pomNode.get("dependencies") as NodeList)[0] as Node)
-                }
-            }
+            artifact(tasks.getByName("jar"))
+            artifact(tasks.getByName("sourcesJar"))
+            artifact(tasks.getByName("javadocJar"))
         }
     }
 
