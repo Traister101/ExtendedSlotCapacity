@@ -1,27 +1,29 @@
 import org.spongepowered.asm.gradle.plugins.struct.DynamicProperties
 
 plugins {
-    idea
-    java
+    id "idea"
+    id "java"
     id("maven-publish")
     id("net.minecraftforge.gradle") version "[6.0,6.2)"
     id("org.parchmentmc.librarian.forgegradle") version "1.+"
     id("org.spongepowered.mixin") version "0.7.+"
 }
 
-file("./dev.gradle.kts").createNewFile()
-apply(from = "dev.gradle.kts")
+file("./dev.gradle").createNewFile()
+apply {
+    from "dev.gradle"
+}
 
-val modID = "esc"
-val modName = "Extended-Slot-Capacity"
-val minecraftVersion = "1.20.1"
-val forgeVersion = "47.1.3"
-val lombokVersion = "1.18.32"
-val mouseTweaksFileId = "5338457"
+final modID = "esc"
+final modName = "Extended-Slot-Capacity"
+final minecraftVersion = "1.20.1"
+final forgeVersion = "47.1.3"
+final lombokVersion = "1.18.32"
+final mouseTweaksFileId = "5338457"
 
-val mappingsChannel: String = project.findProperty("mappings_channel") as String? ?: "official"
-val mappingsVersion: String = project.findProperty("mappings_version") as String? ?: minecraftVersion
-val modVersion: String = System.getenv("VERSION") ?: "0.0.0-indev"
+final mappingsChannel = project.findProperty("mappings_channel") as String ?: "official"
+final mappingsVersion = project.findProperty("mappings_version") as String ?: minecraftVersion
+final modVersion = System.getenv("VERSION") ?: "0.0.0-indev"
 
 base {
     archivesName.set("$modName-$minecraftVersion")
@@ -36,24 +38,18 @@ java {
     withSourcesJar()
 }
 
-println(
-    "Java: ${System.getProperty("java.version")}, JVM: ${System.getProperty("java.vm.version")} (${System.getProperty("java.vendor")}), Arch: ${
-        System.getProperty(
-            "os.arch"
-        )
-    }"
-)
+println("Java: ${System.getProperty("java.version")}, JVM: ${System.getProperty("java.vm.version")} (${System.getProperty("java.vendor")}), Arch: ${System.getProperty("os.arch")}")
 println("Using mappings $mappingsChannel / $mappingsVersion with version $modVersion")
 
 sourceSets.create("testmod")
 
 configurations {
-    get("testmodCompileClasspath").extendsFrom(compileClasspath.get())
-    get("testmodRuntimeClasspath").extendsFrom(runtimeClasspath.get())
+    testmodCompileClasspath.extendsFrom(compileClasspath)
+    testmodRuntimeClasspath.extendsFrom(runtimeClasspath)
 }
 
 mixin {
-    add(sourceSets.main.get(), "extended-slot-capacity.refmap.json")
+    add(sourceSets.main, "extended-slot-capacity.refmap.json")
     config("extended-slot-capacity.mixins.json")
 
     (debug as DynamicProperties).propertyMissing("verbose", true)
@@ -74,8 +70,10 @@ minecraft {
             property("mixin.env.remapRefMap", "true")
             property("mixin.env.refMapRemappingFile", "$projectDir/build/createSrgToMcp/output.srg")
 
-            mods.create(modID) {
-                source(sourceSets.main.get())
+            mods {
+                "$modID" {
+                    source(sourceSets.main)
+                }
             }
         }
 
@@ -88,12 +86,14 @@ minecraft {
         }
 
         register("testmodClient") {
-            parent(runs.getByName("client"))
+            parent(runs["client"])
 
             ideaModule("${project.name.replace(' ', '_')}.testmod")
 
-            mods.create("testmod") {
-                source(sourceSets["testmod"])
+            mods {
+                "testmod" {
+                    source(sourceSets.testmod)
+                }
             }
         }
 
@@ -116,9 +116,10 @@ repositories {
 }
 
 dependencies {
-    minecraft("net.minecraftforge", "forge", "$minecraftVersion-$forgeVersion")
+    //noinspection VulnerableLibrariesLocal
+    minecraft("net.minecraftforge:forge:$minecraftVersion-$forgeVersion")
 
-    "testmodImplementation"(sourceSets["main"].output)
+    "testmodImplementation"(sourceSets.main.output)
 
     // Lombok cause why not
     compileOnly("org.projectlombok:lombok:$lombokVersion")
@@ -134,26 +135,23 @@ dependencies {
 
 idea {
     module {
-        isDownloadJavadoc = true
-        isDownloadSources = true
+        downloadJavadoc = true
+        downloadSources = true
 
         // Add directory exlusions
-        arrayOf(
-            "run", ".gradle", "build", ".idea", "gradle", "resources/venv", "resources/.idea"
-        ).forEach { excludeDirs.add(file(it)) }
+        ["run", ".gradle", "build", ".idea", "gradle", "resources/venv", "resources/.idea"].forEach { excludeDirs.add(file(it)) }
     }
 }
 
 publishing {
     publications {
-        create<MavenPublication>("mavenJava") {
-            groupId = project.group.toString()
-            artifactId = project.base.archivesName.get()
-            version = project.version.toString()
+        mavenJava(MavenPublication) {
+            groupId(project.group)
+            artifactId(project.archivesBaseName)
+            version(project.version)
 
-            artifact(tasks.getByName("jar"))
-            artifact(tasks.getByName("sourcesJar"))
-            artifact(tasks.getByName("javadocJar"))
+            artifact(jar)
+            artifact(sourcesJar)
         }
     }
 
@@ -173,28 +171,21 @@ publishing {
     }
 }
 
-tasks {
-
-    jar {
-        manifest {
-            attributes["Implementation-Version"] = project.version
-        }
-
-        finalizedBy("reobfJar")
+jar {
+    manifest {
+        attributes["Implementation-Version"] = project.version
     }
 
-    javadoc {
-        source = sourceSets.main.get().allJava
-        options.optionFiles(file("javadoc-options.txt"))
-        options.encoding = "UTF-8"
-    }
+    finalizedBy("reobfJar")
+}
 
-    withType<GenerateModuleMetadata> {
-        enabled = false
-    }
+javadoc {
+    source = sourceSets.main.allJava
+    options.optionFiles(file("javadoc-options.txt"))
+    options.encoding = "UTF-8"
+}
 
-    withType<JavaCompile>().configureEach {
-        options.encoding = "UTF-8"
-        options.compilerArgs.addAll(arrayOf("-Xlint:all,-processing", "-Werror"))
-    }
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+    options.compilerArgs.addAll(["-Xlint:all,-processing", "-Werror"])
 }
