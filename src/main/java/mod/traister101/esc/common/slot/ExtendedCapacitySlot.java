@@ -15,6 +15,7 @@ public class ExtendedCapacitySlot extends Slot {
 
 	@Override
 	public int getMaxStackSize(final ItemStack itemStack) {
+		if (itemStack.getMaxStackSize() == 1) return 1;
 		return itemStack.isDamageableItem() ? itemStack.getMaxStackSize() : getMaxStackSize();
 	}
 

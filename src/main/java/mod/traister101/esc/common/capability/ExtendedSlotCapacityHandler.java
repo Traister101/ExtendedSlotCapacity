@@ -44,6 +44,7 @@ public class ExtendedSlotCapacityHandler extends ItemStackHandler {
 
 	@Override
 	public int getStackLimit(final int slotIndex, final ItemStack itemStack) {
+		if (itemStack.getMaxStackSize() == 1) return 1;
 		return itemStack.isDamageableItem() ? itemStack.getMaxStackSize() : getSlotLimit(slotIndex);
 	}
 
